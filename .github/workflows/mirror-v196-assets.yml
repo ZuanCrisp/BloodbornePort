@@ -1,0 +1,76 @@
+
+name: Mirror BloodbornePort v1.9.6 Assets
+
+on:
+  push:
+    branches:
+      - windows
+    paths:
+      - ".github/workflows/mirror-v196-assets.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror-assets:
+    name: Download and Verify Official Assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Download official binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+
+          BASE_URL="https://github.com/Supermedo/bloodborne_pc/releases/download/windows-v1.9.6"
+
+          curl --fail --show-error --location --retry 3 \
+            "$BASE_URL/Bloodborne-Windows.zip" \
+            -o dist/Bloodborne-Windows.zip
+
+          curl --fail --show-error --location --retry 3 \
+            "$BASE_URL/fsr4vk-v0.4.3-amdfix-src.zip" \
+            -o dist/fsr4vk-v0.4.3-amdfix-src.zip
+
+      - name: Verify SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd dist
+
+          echo "51eda9cf5395ef9a29778f5e10b686a2ce9e58dae174908c9fa6b97be1371ea1  Bloodborne-Windows.zip" \
+            | sha256sum --check
+
+          echo "23a05d16ca6116760bff4cd6dbf667bf38319eb20d0107c781e9d65a9b065c90  fsr4vk-v0.4.3-amdfix-src.zip" \
+            | sha256sum --check
+
+          sha256sum \
+            Bloodborne-Windows.zip \
+            fsr4vk-v0.4.3-amdfix-src.zip \
+            > SHA256SUMS.txt
+
+          echo "All SHA256 checks passed."
+
+      - name: Upload assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.9.6 \
+            --repo "$GITHUB_REPOSITORY"
+
+          gh release upload v1.9.6 dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+
+      - name: Verify release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.9.6 \
+            --repo "$GITHUB_REPOSITORY"
